@@ -1,0 +1,1200 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>32-Player Football Championship</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        pitch: {
+                            DEFAULT: '#0f172a',
+                            light: '#1e293b',
+                            card: '#1e293b',
+                            accent: '#10b981',
+                            accentHover: '#059669',
+                            gold: '#f59e0b'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .custom-scrollbar::-webkit-scrollbar {
+            height: 6px;
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans antialiased selection:bg-emerald-500 selection:text-white">
+
+    <!-- Header Navigation -->
+    <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-40 backdrop-blur bg-opacity-90">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                    <i class="fa-solid font-bold fa-trophy text-white text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+                        32-Player Football Championship
+                        <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">4x8 Custom Tournament</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">4 Groups of 8 → 4 Champions → Semi-Finals, 3rd Place & Grand Final</p>
+                </div>
+            </div>
+
+            <!-- Global Actions & Access Status -->
+            <div class="flex items-center space-x-2 flex-wrap gap-y-2">
+                <!-- Role Status Indicator -->
+                <div id="role-badge-container" class="flex items-center px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-xs">
+                    <span id="role-badge" class="font-medium text-slate-300"><i class="fa-solid fa-spinner animate-spin"></i> Connecting...</span>
+                </div>
+                <button id="btn-unlock-access" onclick="openAccessModal()" class="text-xs px-3 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 font-medium border border-amber-500/30 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-key"></i> <span id="access-btn-label">Access Control</span>
+                </button>
+
+                <button id="btn-autofill" onclick="autoFillMockData()" class="text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium border border-slate-700 transition flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-wand-magic-sparkles text-emerald-400"></i> Auto-Fill Players
+                </button>
+                <button id="btn-shuffle" onclick="randomizeSeeding()" class="text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium border border-slate-700 transition flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-shuffle text-amber-400"></i> Shuffle Groups
+                </button>
+                <button id="btn-reset" onclick="openResetModal()" class="text-xs px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 font-medium border border-red-500/20 transition flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-rotate-left"></i> Reset
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-6">
+
+        <!-- Stage Overview Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-4 flex items-center justify-between shadow-sm">
+                <div>
+                    <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Players</p>
+                    <p class="text-2xl font-bold text-white mt-1" id="stat-players-count">32 / 32</p>
+                </div>
+                <div class="w-10 h-10 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+                    <i class="fa-solid fa-users"></i>
+                </div>
+            </div>
+            <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-4 flex items-center justify-between shadow-sm">
+                <div>
+                    <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Group Stage Matches</p>
+                    <p class="text-2xl font-bold text-emerald-400 mt-1" id="stat-group-progress">0 / 28</p>
+                </div>
+                <div class="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                    <i class="fa-solid fa-sitemap"></i>
+                </div>
+            </div>
+            <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-4 flex items-center justify-between shadow-sm">
+                <div>
+                    <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Group Champions</p>
+                    <p class="text-2xl font-bold text-amber-400 mt-1" id="stat-champions-count">0 / 4</p>
+                </div>
+                <div class="w-10 h-10 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+                    <i class="fa-solid fa-crown"></i>
+                </div>
+            </div>
+            <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-4 flex items-center justify-between shadow-sm">
+                <div>
+                    <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Grand Champion</p>
+                    <p class="text-base font-bold text-amber-300 mt-1 truncate max-w-[140px]" id="stat-grand-winner">TBD</p>
+                </div>
+                <div class="w-10 h-10 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-300 animate-pulse">
+                    <i class="fa-solid fa-trophy"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="border-b border-slate-800 flex items-center space-x-2 overflow-x-auto custom-scrollbar pb-1">
+            <button onclick="switchTab('playoff')" id="tab-playoff" class="px-4 py-2.5 text-sm font-semibold rounded-t-lg transition flex items-center gap-2 border-b-2 text-emerald-400 border-emerald-500 bg-slate-900/50">
+                <i class="fa-solid fa-award"></i> Champions Playoff (Final 4)
+            </button>
+            <button onclick="switchTab('group-A')" id="tab-group-A" class="px-4 py-2.5 text-sm font-semibold rounded-t-lg transition flex items-center gap-2 border-b-2 text-slate-400 border-transparent hover:text-slate-200">
+                <i class="fa-solid fa-layer-group"></i> Group A Bracket
+            </button>
+            <button onclick="switchTab('group-B')" id="tab-group-B" class="px-4 py-2.5 text-sm font-semibold rounded-t-lg transition flex items-center gap-2 border-b-2 text-slate-400 border-transparent hover:text-slate-200">
+                <i class="fa-solid fa-layer-group"></i> Group B Bracket
+            </button>
+            <button onclick="switchTab('group-C')" id="tab-group-C" class="px-4 py-2.5 text-sm font-semibold rounded-t-lg transition flex items-center gap-2 border-b-2 text-slate-400 border-transparent hover:text-slate-200">
+                <i class="fa-solid fa-layer-group"></i> Group C Bracket
+            </button>
+            <button onclick="switchTab('group-D')" id="tab-group-D" class="px-4 py-2.5 text-sm font-semibold rounded-t-lg transition flex items-center gap-2 border-b-2 text-slate-400 border-transparent hover:text-slate-200">
+                <i class="fa-solid fa-layer-group"></i> Group D Bracket
+            </button>
+            <button onclick="switchTab('roster')" id="tab-roster" class="px-4 py-2.5 text-sm font-semibold rounded-t-lg transition flex items-center gap-2 border-b-2 text-slate-400 border-transparent hover:text-slate-200">
+                <i class="fa-solid fa-users-gear"></i> Player Roster & Seeding
+            </button>
+        </div>
+
+        <!-- TAB CONTENT: CHAMPIONS PLAYOFF (FINAL 4) -->
+        <div id="content-playoff" class="tab-content flex-1 flex flex-col gap-6">
+            <div class="bg-gradient-to-r from-amber-950/30 via-slate-900 to-slate-900 border border-amber-500/20 rounded-2xl p-6 shadow-xl">
+                <div class="flex items-center justify-between mb-6 border-b border-slate-800 pb-4 flex-wrap gap-2">
+                    <div>
+                        <h2 class="text-xl font-bold text-amber-400 flex items-center gap-2">
+                            <i class="fa-solid fa-trophy"></i> Grand Champions Playoff
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-1">
+                            The 4 Group Champions battle in the Semi-Finals, 3rd Place Playoff, and Grand Final.
+                        </p>
+                    </div>
+                    <button id="btn-sim-playoffs" onclick="quickSimulatePlayoffs()" class="text-xs px-3 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 font-medium border border-amber-500/30 transition flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed">
+                        <i class="fa-solid fa-bolt"></i> Quick Simulate Final 4
+                    </button>
+                </div>
+
+                <!-- Final 4 Bracket Grid -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-center py-4">
+                    <!-- Playoff Semi-Finals -->
+                    <div class="flex flex-col gap-6">
+                        <div class="flex items-center justify-between border-b border-slate-800 pb-1">
+                            <span class="text-xs font-bold text-amber-400/80 uppercase tracking-wider">Playoff Semi-Finals</span>
+                            <span class="text-[10px] text-slate-500">2 Matches</span>
+                        </div>
+                        <div id="playoff-sf-container" class="flex flex-col gap-6">
+                            <!-- SF matches dynamically injected -->
+                        </div>
+                    </div>
+
+                    <!-- Final & 3rd Place Column -->
+                    <div class="flex flex-col gap-8 justify-center">
+                        <!-- Grand Final -->
+                        <div>
+                            <div class="flex items-center justify-between border-b border-amber-500/30 pb-1 mb-3">
+                                <span class="text-xs font-extrabold text-amber-400 uppercase tracking-widest flex items-center gap-1.5">
+                                    <i class="fa-solid fa-star"></i> Grand Final
+                                </span>
+                                <span class="text-[10px] text-amber-400/60 font-semibold">Decides Overall Champion</span>
+                            </div>
+                            <div id="playoff-final-container">
+                                <!-- Grand Final match dynamically injected -->
+                            </div>
+                        </div>
+
+                        <!-- 3rd Place Match -->
+                        <div>
+                            <div class="flex items-center justify-between border-b border-slate-800 pb-1 mb-3">
+                                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                                    <i class="fa-solid fa-medal text-amber-700"></i> 3rd Place Match
+                                </span>
+                                <span class="text-[10px] text-slate-500">Semi-Final Losers</span>
+                            </div>
+                            <div id="playoff-3rd-container">
+                                <!-- 3rd place match dynamically injected -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Winner Champion Podium Showcase -->
+                    <div class="bg-slate-900/90 border border-amber-500/30 rounded-2xl p-6 flex flex-col items-center justify-center text-center shadow-2xl relative overflow-hidden group">
+                        <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-amber-500/10 rounded-full blur-2xl group-hover:bg-amber-500/20 transition"></div>
+                        <div class="w-20 h-20 rounded-full bg-gradient-to-tr from-amber-500 to-yellow-300 flex items-center justify-center shadow-lg shadow-amber-500/30 mb-4 ring-4 ring-amber-400/20">
+                            <i class="fa-solid fa-trophy text-slate-950 text-3xl"></i>
+                        </div>
+                        <span class="text-xs font-extrabold tracking-widest text-amber-400 uppercase">Tournament Winner</span>
+                        <h3 class="text-2xl font-black text-white mt-1" id="podium-winner-name">Undecided</h3>
+                        <p class="text-xs text-slate-400 mt-2 max-w-xs" id="podium-winner-desc">
+                            Complete all group knockout matches and playoff rounds to crown the 32-player tournament champion!
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Group Champions Summary Row -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-crown text-amber-400"></i> Qualified Group Champions (4 Players)
+                </h3>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4" id="group-champions-grid">
+                    <!-- Dynamic Group champions cards -->
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB CONTENT: GROUP BRACKETS (TEMPLATE FOR GROUPS A, B, C, D) -->
+        <div id="content-group" class="tab-content hidden flex-1 flex-col gap-6">
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+                <div class="flex flex-wrap items-center justify-between gap-4 mb-6 border-b border-slate-800 pb-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-white flex items-center gap-2" id="group-title">
+                            Group Tournament Bracket
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-1">8 Participants • Quarter-Finals → Semi-Finals → Group Final (1 Winner advances)</p>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button id="btn-sim-group" onclick="quickSimulateCurrentGroup()" class="text-xs px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-medium border border-emerald-500/20 transition flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed">
+                            <i class="fa-solid fa-bolt"></i> Simulate This Group
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 8-Player Bracket Layout -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-start overflow-x-auto custom-scrollbar py-2">
+                    <!-- Quarter Finals Column -->
+                    <div class="space-y-4 min-w-[240px]">
+                        <div class="flex items-center justify-between border-b border-slate-800 pb-1">
+                            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Quarter-Finals (8 Players)</span>
+                            <span class="text-[10px] text-slate-500">4 Matches</span>
+                        </div>
+                        <div id="bracket-qf" class="space-y-4"></div>
+                    </div>
+
+                    <!-- Semi Finals Column -->
+                    <div class="space-y-4 min-w-[240px] md:pt-12">
+                        <div class="flex items-center justify-between border-b border-slate-800 pb-1">
+                            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Semi-Finals (4 Players)</span>
+                            <span class="text-[10px] text-slate-500">2 Matches</span>
+                        </div>
+                        <div id="bracket-sf" class="space-y-8"></div>
+                    </div>
+
+                    <!-- Group Final Column -->
+                    <div class="space-y-4 min-w-[240px] md:pt-28">
+                        <div class="flex items-center justify-between border-b border-emerald-500/30 pb-1">
+                            <span class="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1">
+                                <i class="fa-solid fa-crown text-amber-400"></i> Group Final
+                            </span>
+                            <span class="text-[10px] text-emerald-400/70">1 Champion</span>
+                        </div>
+                        <div id="bracket-final" class="space-y-4"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB CONTENT: ROSTER & SEEDING -->
+        <div id="content-roster" class="tab-content hidden flex-1 flex-col gap-6">
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+                <div class="flex flex-wrap items-center justify-between gap-4 mb-6 border-b border-slate-800 pb-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-users-gear text-emerald-400"></i> Player Roster & Seeding (32 Participants)
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-1">Edit participant names below or auto-generate mock players. Names sync automatically across all brackets.</p>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button id="btn-load-names" onclick="autoFillMockData()" class="text-xs px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-medium border border-emerald-500/30 transition flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed">
+                            <i class="fa-solid fa-user-plus"></i> Load Default Names
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 4 Groups Editor Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" id="roster-groups-grid">
+                    <!-- Dynamic group player inputs -->
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Score Editing Modal -->
+    <div id="score-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+            <button onclick="closeScoreModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <h3 class="text-lg font-bold text-white mb-1 flex items-center gap-2" id="modal-title">
+                Match Result Entry
+            </h3>
+            <p class="text-xs text-slate-400 mb-6" id="modal-subtitle">Enter goals scored. Ties require penalty winner selection.</p>
+
+            <form id="score-form" onsubmit="saveMatchScore(event)" class="space-y-6">
+                <input type="hidden" id="modal-match-id">
+
+                <div class="grid grid-cols-5 items-center gap-3 bg-slate-950 p-4 rounded-xl border border-slate-800">
+                    <!-- Team 1 -->
+                    <div class="col-span-2 text-center space-y-2">
+                        <p class="text-sm font-bold text-slate-200 truncate" id="modal-p1-name">Player 1</p>
+                        <input type="number" min="0" max="99" id="modal-p1-score" required class="w-16 h-12 text-center text-xl font-bold bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-emerald-500">
+                    </div>
+
+                    <div class="col-span-1 text-center font-bold text-slate-500">VS</div>
+
+                    <!-- Team 2 -->
+                    <div class="col-span-2 text-center space-y-2">
+                        <p class="text-sm font-bold text-slate-200 truncate" id="modal-p2-name">Player 2</p>
+                        <input type="number" min="0" max="99" id="modal-p2-score" required class="w-16 h-12 text-center text-xl font-bold bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-emerald-500">
+                    </div>
+                </div>
+
+                <!-- Penalty Winner Selection (if drawn) -->
+                <div id="penalty-section" class="hidden p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl space-y-2">
+                    <p class="text-xs font-semibold text-amber-400 flex items-center gap-1.5">
+                        <i class="fa-solid fa-circle-exclamation"></i> Match Tied! Select Penalty Shootout Winner:
+                    </p>
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="flex items-center space-x-2 text-xs text-slate-300 p-2 bg-slate-900 rounded-lg border border-slate-800 cursor-pointer">
+                            <input type="radio" name="penaltyWinner" value="1" id="pen-p1" class="text-emerald-500">
+                            <span id="modal-pen-p1-label" class="truncate">Player 1</span>
+                        </label>
+                        <label class="flex items-center space-x-2 text-xs text-slate-300 p-2 bg-slate-900 rounded-lg border border-slate-800 cursor-pointer">
+                            <input type="radio" name="penaltyWinner" value="2" id="pen-p2" class="text-emerald-500">
+                            <span id="modal-pen-p2-label" class="truncate">Player 2</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-end space-x-3 pt-2">
+                    <button type="button" onclick="closeScoreModal()" class="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white transition">Cancel</button>
+                    <button type="submit" class="px-5 py-2 text-xs font-semibold bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition shadow-lg shadow-emerald-500/20">
+                        Save & Advance Winner
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Access & Permission Settings Modal -->
+    <div id="access-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+            <button onclick="closeAccessModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <h3 class="text-lg font-bold text-white mb-1 flex items-center gap-2">
+                <i class="fa-solid fa-shield-halved text-emerald-400"></i> Access Control & Permissions
+            </h3>
+            <p class="text-xs text-slate-400 mb-4">Only the Creator or permitted users with the Admin Passcode can make changes.</p>
+
+            <!-- Status Box -->
+            <div class="p-3 mb-4 rounded-xl bg-slate-950 border border-slate-800 text-xs flex items-center justify-between">
+                <span class="text-slate-400">Your Current Status:</span>
+                <span id="modal-role-status" class="font-bold text-amber-400">Checking...</span>
+            </div>
+
+            <!-- Viewer Mode Unlock Form -->
+            <div id="access-unlock-section" class="space-y-3 bg-slate-950 p-4 rounded-xl border border-slate-800">
+                <h4 class="text-xs font-bold text-amber-400 uppercase tracking-wider">Unlock Editor Access</h4>
+                <p class="text-xs text-slate-300">Enter the Admin Passcode provided by the tournament creator:</p>
+                <div class="flex items-center gap-2">
+                    <input type="password" id="input-access-passcode" placeholder="Enter Admin Passcode" class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+                    <button onclick="submitAccessPasscode()" class="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold text-xs rounded-lg transition">
+                        Unlock
+                    </button>
+                </div>
+                <p id="access-passcode-msg" class="text-[11px] hidden"></p>
+            </div>
+
+            <!-- Creator Control Section -->
+            <div id="creator-control-section" class="mt-4 space-y-3 bg-slate-950 p-4 rounded-xl border border-slate-800 hidden">
+                <h4 class="text-xs font-bold text-emerald-400 uppercase tracking-wider">Creator Passcode Management</h4>
+                <div class="space-y-2">
+                    <label class="text-[11px] text-slate-400 block">Set or Update Admin Passcode for Editors:</label>
+                    <div class="flex items-center gap-2">
+                        <input type="text" id="input-set-passcode" placeholder="e.g. 1234" class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+                        <button onclick="updateAdminPasscode()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs rounded-lg transition">
+                            Save PIN
+                        </button>
+                    </div>
+                </div>
+                <div class="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
+                    <span class="text-slate-400">Your User ID:</span>
+                    <span id="display-user-id" class="font-mono text-slate-300 truncate max-w-[180px]">Loading...</span>
+                </div>
+            </div>
+
+            <div class="flex justify-end pt-4">
+                <button onclick="closeAccessModal()" class="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white transition">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reset Confirmation Modal -->
+    <div id="reset-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-6 shadow-2xl relative text-center">
+            <div class="w-12 h-12 rounded-full bg-red-500/10 text-red-400 flex items-center justify-center mx-auto mb-4 border border-red-500/20">
+                <i class="fa-solid fa-triangle-exclamation text-xl"></i>
+            </div>
+            <h3 class="text-lg font-bold text-white mb-2">Reset Tournament Scores?</h3>
+            <p class="text-xs text-slate-400 mb-6">This will clear all match scores, advancement progress, and registered player names. This action is only available to the tournament Creator.</p>
+            <div class="flex items-center justify-center gap-3">
+                <button onclick="closeResetModal()" class="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white transition">Cancel</button>
+                <button onclick="confirmResetTournament()" class="px-4 py-2 text-xs font-semibold bg-red-500 hover:bg-red-600 text-white rounded-lg transition shadow-lg shadow-red-500/20">Reset Progression</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- App Logic Script -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Your unique app/document identifier within Firestore.
+        const appId = 'football-tourney-32';
+
+        // Your real Firebase project config (from the Firebase console).
+        const firebaseConfig = {
+            apiKey: "AIzaSyDTCtNvb4bAs0aUaJrfsFDKPOKHXfbj-n8",
+            authDomain: "the-best-of-32.firebaseapp.com",
+            projectId: "the-best-of-32",
+            storageBucket: "the-best-of-32.firebasestorage.app",
+            messagingSenderId: "753341789381",
+            appId: "1:753341789381:web:54d8b184f58960cd312cac"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Attach all handlers to window immediately, before any Firebase
+        // calls run, so the buttons work even if Firebase throws an error.
+        window.switchTab = switchTab;
+        window.openScoreModal = openScoreModal;
+        window.closeScoreModal = closeScoreModal;
+        window.saveMatchScore = saveMatchScore;
+        window.autoFillMockData = autoFillMockData;
+        window.randomizeSeeding = randomizeSeeding;
+        window.openResetModal = openResetModal;
+        window.closeResetModal = closeResetModal;
+        window.confirmResetTournament = confirmResetTournament;
+        window.quickSimulateCurrentGroup = quickSimulateCurrentGroup;
+        window.quickSimulatePlayoffs = quickSimulatePlayoffs;
+        window.updatePlayerName = updatePlayerName;
+        window.openAccessModal = openAccessModal;
+        window.closeAccessModal = closeAccessModal;
+        window.submitAccessPasscode = submitAccessPasscode;
+        window.updateAdminPasscode = updateAdminPasscode;
+
+        let currentUser = null;
+        let currentUserId = null;
+
+        const defaultPlayers = Array.from({ length: 32 }, (_, i) => `Player ${i + 1}`);
+        const defaultMockNames = [
+            "Alex Morgan", "Jude Bellingham", "Erling Haaland", "Kylian Mbappé", 
+            "Vinícius Jr", "Mohamed Salah", "Kevin De Bruyne", "Harry Kane",
+            "Bukayo Saka", "Pedri Gonzalez", "Antoine Griezmann", "Lautaro Martínez",
+            "Rodri Hernandez", "Jamal Musiala", "Victor Osimhen", "Lamine Yamal",
+            "Federico Valverde", "Bruno Fernandes", "Florian Wirtz", "Cole Palmer",
+            "Son Heung-min", "Declan Rice", "Trent Alexander", "Rafael Leão",
+            "Julian Alvarez", "Bernardo Silva", "Ousmane Dembélé", "Gabriel Martinelli",
+            "Eduardo Camavinga", "Raphinha Dias", "Achraf Hakimi", "Gavi Paez"
+        ];
+
+        function createGroupStructure(groupId) {
+            return {
+                id: groupId,
+                qf: [
+                    { id: `${groupId}-qf1`, p1Idx: 0, p2Idx: 1, p1: '', p2: '', score1: null, score2: null, winner: null },
+                    { id: `${groupId}-qf2`, p1Idx: 2, p2Idx: 3, p1: '', p2: '', score1: null, score2: null, winner: null },
+                    { id: `${groupId}-qf3`, p1Idx: 4, p2Idx: 5, p1: '', p2: '', score1: null, score2: null, winner: null },
+                    { id: `${groupId}-qf4`, p1Idx: 6, p2Idx: 7, p1: '', p2: '', score1: null, score2: null, winner: null }
+                ],
+                sf: [
+                    { id: `${groupId}-sf1`, p1: '', p2: '', score1: null, score2: null, winner: null },
+                    { id: `${groupId}-sf2`, p1: '', p2: '', score1: null, score2: null, winner: null }
+                ],
+                final: { id: `${groupId}-final`, p1: '', p2: '', score1: null, score2: null, winner: null },
+                champion: ''
+            };
+        }
+
+        let state = {
+            players: [...defaultPlayers],
+            activeTab: 'playoff',
+            activeGroup: 'A',
+            creatorUid: null,
+            adminPasscode: '1234',
+            allowedUids: [],
+            groups: {
+                'A': createGroupStructure('A'),
+                'B': createGroupStructure('B'),
+                'C': createGroupStructure('C'),
+                'D': createGroupStructure('D')
+            },
+            playoff: {
+                sf: [
+                    { id: 'psf1', p1Group: 'A', p2Group: 'B', p1: '', p2: '', score1: null, score2: null, winner: null },
+                    { id: 'psf2', p1Group: 'C', p2Group: 'D', p1: '', p2: '', score1: null, score2: null, winner: null }
+                ],
+                thirdPlace: { id: 'p3rd', p1: '', p2: '', score1: null, score2: null, winner: null },
+                grandFinal: { id: 'pfinal', p1: '', p2: '', score1: null, score2: null, winner: null },
+                grandChampion: ''
+            }
+        };
+
+        const tourneyDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'tournament', 'main');
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            try {
+                await signInAnonymously(auth);
+            } catch (err) {
+                console.error("Auth failed", err);
+            }
+
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    currentUser = user;
+                    currentUserId = user.uid;
+                    const userIdEl = document.getElementById('display-user-id');
+                    if (userIdEl) userIdEl.innerText = currentUserId;
+                    setupRealtimeSync();
+                }
+            });
+        });
+
+        function setupRealtimeSync() {
+            if (!currentUser) return;
+
+            onSnapshot(tourneyDocRef, (snapshot) => {
+                if (snapshot.exists()) {
+                    const data = snapshot.data();
+                    state = { ...state, ...data };
+                } else {
+                    // Document doesn't exist yet, initial creation by current user as Creator
+                    state.creatorUid = currentUserId;
+                    state.allowedUids = [currentUserId];
+                    saveToCloud();
+                }
+                syncPlayerNamesToBracket();
+                renderAll();
+            }, (error) => {
+                console.error("Firestore sync error:", error);
+            });
+        }
+
+        async function saveToCloud() {
+            if (!currentUser) return;
+            if (!canEdit()) {
+                openAccessModal();
+                return;
+            }
+            try {
+                await setDoc(tourneyDocRef, state, { merge: true });
+            } catch (e) {
+                console.error("Failed to save state to Firestore", e);
+            }
+        }
+
+        function canEdit() {
+            if (!currentUserId) return false;
+            if (!state.creatorUid) return true; 
+            if (state.creatorUid === currentUserId) return true;
+            if (state.allowedUids && state.allowedUids.includes(currentUserId)) return true;
+            
+            const savedPass = localStorage.getItem('tourney_editor_passcode');
+            if (savedPass && savedPass === state.adminPasscode) return true;
+
+            return false;
+        }
+
+        function isCreator() {
+            return currentUserId && state.creatorUid === currentUserId;
+        }
+
+        function updatePermissionUI() {
+            const badge = document.getElementById('role-badge');
+            const modalRoleStatus = document.getElementById('modal-role-status');
+            const hasEditPermission = canEdit();
+
+            if (badge) {
+                if (isCreator()) {
+                    badge.innerHTML = `<i class="fa-solid fa-crown text-amber-400"></i> Creator (Full Access)`;
+                    badge.className = "font-bold text-amber-400";
+                    if (modalRoleStatus) modalRoleStatus.innerText = "👑 Creator (Full Control)";
+                } else if (hasEditPermission) {
+                    badge.innerHTML = `<i class="fa-solid fa-user-pen text-emerald-400"></i> Permitted Editor`;
+                    badge.className = "font-bold text-emerald-400";
+                    if (modalRoleStatus) modalRoleStatus.innerText = "✏️ Permitted Editor";
+                } else {
+                    badge.innerHTML = `<i class="fa-solid fa-eye text-slate-400"></i> Viewer (Read-Only)`;
+                    badge.className = "font-medium text-slate-400";
+                    if (modalRoleStatus) modalRoleStatus.innerText = "👁️ Viewer (Read-Only)";
+                }
+            }
+
+            // Disable or Enable Action Buttons based on permissions
+            const actionBtns = ['btn-autofill', 'btn-shuffle', 'btn-sim-playoffs', 'btn-sim-group', 'btn-load-names'];
+            actionBtns.forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) btn.disabled = !hasEditPermission;
+            });
+
+            // Reset is Creator-only, not available to permitted editors
+            const resetBtn = document.getElementById('btn-reset');
+            if (resetBtn) resetBtn.disabled = !isCreator();
+        }
+
+        function switchTab(tabId) {
+            if (tabId.startsWith('group-')) {
+                state.activeGroup = tabId.replace('group-', '');
+                state.activeTab = 'group';
+            } else {
+                state.activeTab = tabId;
+            }
+
+            document.querySelectorAll('header + main button[id^="tab-"]').forEach(btn => {
+                btn.classList.remove('text-emerald-400', 'border-emerald-500', 'bg-slate-900/50');
+                btn.classList.add('text-slate-400', 'border-transparent');
+            });
+
+            const currentTabBtn = document.getElementById(tabId.startsWith('group-') ? `tab-${tabId}` : `tab-${tabId}`);
+            if (currentTabBtn) {
+                currentTabBtn.classList.add('text-emerald-400', 'border-emerald-500', 'bg-slate-900/50');
+                currentTabBtn.classList.remove('text-slate-400', 'border-transparent');
+            }
+
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+
+            if (state.activeTab === 'playoff') {
+                document.getElementById('content-playoff').classList.remove('hidden');
+            } else if (state.activeTab === 'group') {
+                document.getElementById('content-group').classList.remove('hidden');
+                document.getElementById('group-title').innerText = `Group ${state.activeGroup} Knockout Bracket`;
+                renderGroupBracket(state.activeGroup);
+            } else if (state.activeTab === 'roster') {
+                document.getElementById('content-roster').classList.remove('hidden');
+                renderRoster();
+            }
+
+            renderStats();
+        }
+
+        function syncPlayerNamesToBracket() {
+            const groupKeys = ['A', 'B', 'C', 'D'];
+            groupKeys.forEach((gKey, gIdx) => {
+                const group = state.groups[gKey];
+                const offset = gIdx * 8;
+                
+                group.qf[0].p1 = state.players[offset + 0] || 'Player 1';
+                group.qf[0].p2 = state.players[offset + 1] || 'Player 2';
+                group.qf[1].p1 = state.players[offset + 2] || 'Player 3';
+                group.qf[1].p2 = state.players[offset + 3] || 'Player 4';
+                group.qf[2].p1 = state.players[offset + 4] || 'Player 5';
+                group.qf[2].p2 = state.players[offset + 5] || 'Player 6';
+                group.qf[3].p1 = state.players[offset + 6] || 'Player 7';
+                group.qf[3].p2 = state.players[offset + 7] || 'Player 8';
+
+                updateGroupProgression(gKey);
+            });
+
+            updatePlayoffProgression();
+        }
+
+        function updateGroupProgression(gKey) {
+            const group = state.groups[gKey];
+
+            group.sf[0].p1 = group.qf[0].winner || '';
+            group.sf[0].p2 = group.qf[1].winner || '';
+
+            group.sf[1].p1 = group.qf[2].winner || '';
+            group.sf[1].p2 = group.qf[3].winner || '';
+
+            group.final.p1 = group.sf[0].winner || '';
+            group.final.p2 = group.sf[1].winner || '';
+
+            group.champion = group.final.winner || '';
+        }
+
+        function updatePlayoffProgression() {
+            state.playoff.sf[0].p1 = state.groups['A'].champion || '';
+            state.playoff.sf[0].p2 = state.groups['B'].champion || '';
+
+            state.playoff.sf[1].p1 = state.groups['C'].champion || '';
+            state.playoff.sf[1].p2 = state.groups['D'].champion || '';
+
+            state.playoff.grandFinal.p1 = state.playoff.sf[0].winner || '';
+            state.playoff.grandFinal.p2 = state.playoff.sf[1].winner || '';
+
+            const loserSF1 = getMatchLoser(state.playoff.sf[0]);
+            const loserSF2 = getMatchLoser(state.playoff.sf[1]);
+            state.playoff.thirdPlace.p1 = loserSF1;
+            state.playoff.thirdPlace.p2 = loserSF2;
+
+            state.playoff.grandChampion = state.playoff.grandFinal.winner || '';
+        }
+
+        function getMatchLoser(match) {
+            if (!match.winner || match.score1 === null) return '';
+            return match.winner === match.p1 ? match.p2 : match.p1;
+        }
+
+        function renderAll() {
+            renderPlayoffTab();
+            if (state.activeTab === 'group') {
+                renderGroupBracket(state.activeGroup);
+            } else if (state.activeTab === 'roster') {
+                renderRoster();
+            }
+            renderStats();
+            updatePermissionUI();
+        }
+
+        function renderStats() {
+            document.getElementById('stat-players-count').innerText = `${state.players.filter(p => p.trim() !== '').length} / 32`;
+            
+            let completedGroupMatches = 0;
+            ['A', 'B', 'C', 'D'].forEach(g => {
+                const group = state.groups[g];
+                group.qf.forEach(m => { if (m.winner) completedGroupMatches++; });
+                group.sf.forEach(m => { if (m.winner) completedGroupMatches++; });
+                if (group.final.winner) completedGroupMatches++;
+            });
+            document.getElementById('stat-group-progress').innerText = `${completedGroupMatches} / 28`;
+
+            let championsCount = 0;
+            ['A', 'B', 'C', 'D'].forEach(g => {
+                if (state.groups[g].champion) championsCount++;
+            });
+            document.getElementById('stat-champions-count').innerText = `${championsCount} / 4`;
+
+            const winnerNameEl = document.getElementById('stat-grand-winner');
+            if (state.playoff.grandChampion) {
+                winnerNameEl.innerText = state.playoff.grandChampion;
+                winnerNameEl.classList.remove('text-amber-300/50');
+                winnerNameEl.classList.add('text-amber-300');
+            } else {
+                winnerNameEl.innerText = 'TBD';
+            }
+        }
+
+        function renderPlayoffTab() {
+            const sfContainer = document.getElementById('playoff-sf-container');
+            if (sfContainer) {
+                sfContainer.innerHTML = state.playoff.sf.map((match, idx) => `
+                    <div class="space-y-1">
+                        <span class="text-[10px] text-amber-400/70 font-semibold uppercase">Semi-Final ${idx + 1} (Group ${match.p1Group} vs Group ${match.p2Group})</span>
+                        ${renderMatchCard(match, `playoff-sf-${idx}`)}
+                    </div>
+                `).join('');
+            }
+
+            const finalContainer = document.getElementById('playoff-final-container');
+            if (finalContainer) finalContainer.innerHTML = renderMatchCard(state.playoff.grandFinal, 'playoff-final', true);
+
+            const thirdContainer = document.getElementById('playoff-3rd-container');
+            if (thirdContainer) thirdContainer.innerHTML = renderMatchCard(state.playoff.thirdPlace, 'playoff-3rd');
+
+            const champsGrid = document.getElementById('group-champions-grid');
+            if (champsGrid) {
+                champsGrid.innerHTML = ['A', 'B', 'C', 'D'].map(gKey => {
+                    const champ = state.groups[gKey].champion;
+                    return `
+                        <div class="bg-slate-950 p-3.5 rounded-xl border ${champ ? 'border-amber-500/30' : 'border-slate-800'} flex items-center space-x-3">
+                            <div class="w-8 h-8 rounded-lg ${champ ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-800 text-slate-600'} flex items-center justify-center font-bold text-xs">
+                                ${gKey}
+                            </div>
+                            <div class="overflow-hidden">
+                                <span class="text-[10px] text-slate-500 font-semibold uppercase">Group ${gKey} Champion</span>
+                                <p class="text-xs font-bold ${champ ? 'text-white' : 'text-slate-600'} truncate">
+                                    ${champ || 'Pending...'}
+                                </p>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            const podiumWinner = document.getElementById('podium-winner-name');
+            const podiumDesc = document.getElementById('podium-winner-desc');
+            if (podiumWinner && podiumDesc) {
+                if (state.playoff.grandChampion) {
+                    podiumWinner.innerText = state.playoff.grandChampion;
+                    podiumDesc.innerText = `Congratulations! ${state.playoff.grandChampion} won the grand tournament out of all 32 players!`;
+                } else {
+                    podiumWinner.innerText = 'Undecided';
+                    podiumDesc.innerText = 'Complete all group knockout matches and playoff rounds to crown the 32-player tournament champion!';
+                }
+            }
+        }
+
+        function renderGroupBracket(gKey) {
+            const group = state.groups[gKey];
+
+            const qfContainer = document.getElementById('bracket-qf');
+            if (qfContainer) {
+                qfContainer.innerHTML = group.qf.map((m, idx) => `
+                    <div class="space-y-1">
+                        <span class="text-[10px] text-slate-500 font-semibold uppercase">Match QF-${idx + 1}</span>
+                        ${renderMatchCard(m, `group-${gKey}-qf-${idx}`)}
+                    </div>
+                `).join('');
+            }
+
+            const sfContainer = document.getElementById('bracket-sf');
+            if (sfContainer) {
+                sfContainer.innerHTML = group.sf.map((m, idx) => `
+                    <div class="space-y-1">
+                        <span class="text-[10px] text-slate-500 font-semibold uppercase">Semi-Final ${idx + 1}</span>
+                        ${renderMatchCard(m, `group-${gKey}-sf-${idx}`)}
+                    </div>
+                `).join('');
+            }
+
+            const finalContainer = document.getElementById('bracket-final');
+            if (finalContainer) {
+                finalContainer.innerHTML = `
+                    <div class="space-y-1">
+                        <span class="text-[10px] text-emerald-400 font-semibold uppercase">Group ${gKey} Championship Match</span>
+                        ${renderMatchCard(group.final, `group-${gKey}-final`, true)}
+                    </div>
+                `;
+            }
+        }
+
+        function renderMatchCard(match, matchKey, isFinal = false) {
+            const isReady = match.p1 && match.p2;
+            const isFinished = match.winner !== null && match.winner !== undefined;
+
+            const p1IsWinner = match.winner === match.p1 && match.p1 !== '';
+            const p2IsWinner = match.winner === match.p2 && match.p2 !== '';
+            const hasEditPermission = canEdit();
+
+            return `
+                <div class="bg-slate-900 border ${isFinal ? 'border-amber-500/40 shadow-lg shadow-amber-500/5' : 'border-slate-800'} rounded-xl overflow-hidden hover:border-slate-700 transition">
+                    <div class="flex items-center justify-between p-2.5 border-b border-slate-800/80 ${p1IsWinner ? 'bg-emerald-500/10' : ''}">
+                        <div class="flex items-center space-x-2 overflow-hidden">
+                            <span class="w-2 h-2 rounded-full ${p1IsWinner ? 'bg-emerald-400' : 'bg-slate-700'}"></span>
+                            <span class="text-xs font-semibold ${p1IsWinner ? 'text-emerald-300 font-bold' : (match.p1 ? 'text-slate-200' : 'text-slate-600')} truncate">
+                                ${match.p1 || 'TBD'}
+                            </span>
+                        </div>
+                        <span class="text-xs font-bold ${p1IsWinner ? 'text-emerald-400' : 'text-slate-400'}">
+                            ${match.score1 !== null ? match.score1 : '-'}
+                        </span>
+                    </div>
+
+                    <div class="flex items-center justify-between p-2.5 ${p2IsWinner ? 'bg-emerald-500/10' : ''}">
+                        <div class="flex items-center space-x-2 overflow-hidden">
+                            <span class="w-2 h-2 rounded-full ${p2IsWinner ? 'bg-emerald-400' : 'bg-slate-700'}"></span>
+                            <span class="text-xs font-semibold ${p2IsWinner ? 'text-emerald-300 font-bold' : (match.p2 ? 'text-slate-200' : 'text-slate-600')} truncate">
+                                ${match.p2 || 'TBD'}
+                            </span>
+                        </div>
+                        <span class="text-xs font-bold ${p2IsWinner ? 'text-emerald-400' : 'text-slate-400'}">
+                            ${match.score2 !== null ? match.score2 : '-'}
+                        </span>
+                    </div>
+
+                    <div class="bg-slate-950/60 px-2.5 py-1.5 border-t border-slate-800/60 flex items-center justify-between">
+                        <span class="text-[10px] text-slate-500">
+                            ${isFinished ? 'Completed' : (isReady ? 'Ready' : 'Waiting')}
+                        </span>
+                        ${isReady ? (hasEditPermission ? `
+                            <button onclick="openScoreModal('${match.id}')" class="text-[10px] font-semibold text-emerald-400 hover:text-emerald-300 flex items-center gap-1">
+                                <i class="fa-solid fa-pen-to-square"></i> ${isFinished ? 'Edit Score' : 'Enter Result'}
+                            </button>
+                        ` : `
+                            <button onclick="openAccessModal()" class="text-[10px] text-slate-500 hover:text-amber-400 flex items-center gap-1">
+                                <i class="fa-solid fa-lock text-amber-500/70"></i> View Only
+                            </button>
+                        `) : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderRoster() {
+            const container = document.getElementById('roster-groups-grid');
+            if (!container) return;
+
+            const groupKeys = ['A', 'B', 'C', 'D'];
+            const hasEditPermission = canEdit();
+
+            container.innerHTML = groupKeys.map((gKey, gIdx) => {
+                const offset = gIdx * 8;
+                const groupPlayers = state.players.slice(offset, offset + 8);
+
+                return `
+                    <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-3">
+                        <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                            <h3 class="text-sm font-bold text-emerald-400 flex items-center gap-2">
+                                <i class="fa-solid fa-shield"></i> Group ${gKey}
+                            </h3>
+                            <span class="text-[10px] text-slate-500">8 Players</span>
+                        </div>
+                        <div class="space-y-2">
+                            ${groupPlayers.map((player, idx) => {
+                                const globalIdx = offset + idx;
+                                return `
+                                    <div class="flex items-center space-x-2">
+                                        <span class="text-[10px] font-bold text-slate-600 w-4">${idx + 1}.</span>
+                                        <input 
+                                            type="text" 
+                                            value="${escapeHtml(player)}" 
+                                            ${!hasEditPermission ? 'disabled' : ''}
+                                            onchange="updatePlayerName(${globalIdx}, this.value)"
+                                            class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                                            placeholder="Player Name"
+                                        >
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function escapeHtml(str) {
+            return (str || '').replace(/"/g, '&quot;');
+        }
+
+        function updatePlayerName(index, newName) {
+            if (!canEdit()) return openAccessModal();
+            state.players[index] = newName.trim() || `Player ${index + 1}`;
+            syncPlayerNamesToBracket();
+            saveToCloud();
+            renderAll();
+        }
+
+        let currentEditingMatch = null;
+
+        function findMatchById(matchId) {
+            for (let gKey of ['A', 'B', 'C', 'D']) {
+                const g = state.groups[gKey];
+                let found = g.qf.find(m => m.id === matchId) || g.sf.find(m => m.id === matchId);
+                if (found) return found;
+                if (g.final.id === matchId) return g.final;
+            }
+
+            let found = state.playoff.sf.find(m => m.id === matchId);
+            if (found) return found;
+            if (state.playoff.thirdPlace.id === matchId) return state.playoff.thirdPlace;
+            if (state.playoff.grandFinal.id === matchId) return state.playoff.grandFinal;
+
+            return null;
+        }
+
+        function openScoreModal(matchId) {
+            if (!canEdit()) {
+                openAccessModal();
+                return;
+            }
+            const match = findMatchById(matchId);
+            if (!match || !match.p1 || !match.p2) return;
+
+            currentEditingMatch = match;
+
+            document.getElementById('modal-match-id').value = matchId;
+            document.getElementById('modal-p1-name').innerText = match.p1;
+            document.getElementById('modal-p2-name').innerText = match.p2;
+
+            document.getElementById('modal-p1-score').value = match.score1 !== null ? match.score1 : 0;
+            document.getElementById('modal-p2-score').value = match.score2 !== null ? match.score2 : 0;
+
+            document.getElementById('modal-pen-p1-label').innerText = match.p1;
+            document.getElementById('modal-pen-p2-label').innerText = match.p2;
+
+            document.getElementById('modal-p1-score').oninput = checkTieCondition;
+            document.getElementById('modal-p2-score').oninput = checkTieCondition;
+
+            checkTieCondition();
+            document.getElementById('score-modal').classList.remove('hidden');
+        }
+
+        function checkTieCondition() {
+            const s1 = parseInt(document.getElementById('modal-p1-score').value) || 0;
+            const s2 = parseInt(document.getElementById('modal-p2-score').value) || 0;
+            const penSection = document.getElementById('penalty-section');
+
+            if (s1 === s2) {
+                penSection.classList.remove('hidden');
+                document.getElementById('pen-p1').required = true;
+            } else {
+                penSection.classList.add('hidden');
+                document.getElementById('pen-p1').required = false;
+            }
+        }
+
+        function closeScoreModal() {
+            document.getElementById('score-modal').classList.add('hidden');
+            currentEditingMatch = null;
+        }
+
+        function saveMatchScore(e) {
+            e.preventDefault();
+            if (!currentEditingMatch || !canEdit()) return;
+
+            const s1 = parseInt(document.getElementById('modal-p1-score').value) || 0;
+            const s2 = parseInt(document.getElementById('modal-p2-score').value) || 0;
+
+            currentEditingMatch.score1 = s1;
+            currentEditingMatch.score2 = s2;
+
+            if (s1 > s2) {
+                currentEditingMatch.winner = currentEditingMatch.p1;
+            } else if (s2 > s1) {
+                currentEditingMatch.winner = currentEditingMatch.p2;
+            } else {
+                const penVal = document.querySelector('input[name="penaltyWinner"]:checked')?.value;
+                currentEditingMatch.winner = penVal === '1' ? currentEditingMatch.p1 : currentEditingMatch.p2;
+            }
+
+            syncPlayerNamesToBracket();
+            saveToCloud();
+            closeScoreModal();
+            renderAll();
+        }
+
+        function openAccessModal() {
+            document.getElementById('access-modal').classList.remove('hidden');
+            const passcodeSection = document.getElementById('creator-control-section');
+            if (isCreator()) {
+                passcodeSection.classList.remove('hidden');
+                document.getElementById('input-set-passcode').value = state.adminPasscode || '';
+            } else {
+                passcodeSection.classList.add('hidden');
+            }
+        }
+
+        function closeAccessModal() {
+            document.getElementById('access-modal').classList.add('hidden');
+        }
+
+        function submitAccessPasscode() {
+            const val = document.getElementById('input-access-passcode').value.trim();
+            const msg = document.getElementById('access-passcode-msg');
+
+            if (val === state.adminPasscode) {
+                localStorage.setItem('tourney_editor_passcode', val);
+                if (!state.allowedUids.includes(currentUserId)) {
+                    state.allowedUids.push(currentUserId);
+                    saveToCloud();
+                }
+                msg.innerText = "Success! Editor access unlocked.";
+                msg.className = "text-[11px] text-emerald-400 font-bold block";
+                updatePermissionUI();
+                renderAll();
+                setTimeout(() => closeAccessModal(), 1200);
+            } else {
+                msg.innerText = "Invalid Passcode. Please try again.";
+                msg.className = "text-[11px] text-red-400 font-bold block";
+            }
+        }
+
+        function updateAdminPasscode() {
+            if (!isCreator()) return;
+            const newPin = document.getElementById('input-set-passcode').value.trim();
+            if (!newPin) return;
+
+            state.adminPasscode = newPin;
+            saveToCloud();
+            closeAccessModal();
+        }
+
+        function openResetModal() {
+            if (!isCreator()) return openAccessModal();
+            document.getElementById('reset-modal').classList.remove('hidden');
+        }
+
+        function closeResetModal() {
+            document.getElementById('reset-modal').classList.add('hidden');
+        }
+
+        function confirmResetTournament() {
+            if (!isCreator()) return;
+            state.players = [...defaultPlayers];
+            ['A', 'B', 'C', 'D'].forEach(gKey => {
+                state.groups[gKey] = createGroupStructure(gKey);
+            });
+            state.playoff = {
+                sf: [
+                    { id: 'psf1', p1Group: 'A', p2Group: 'B', p1: '', p2: '', score1: null, score2: null, winner: null },
+                    { id: 'psf2', p1Group: 'C', p2Group: 'D', p1: '', p2: '', score1: null, score2: null, winner: null }
+                ],
+                thirdPlace: { id: 'p3rd', p1: '', p2: '', score1: null, score2: null, winner: null },
+                grandFinal: { id: 'pfinal', p1: '', p2: '', score1: null, score2: null, winner: null },
+                grandChampion: ''
+            };
+            syncPlayerNamesToBracket();
+            saveToCloud();
+            closeResetModal();
+            renderAll();
+        }
+
+        function autoFillMockData() {
+            if (!canEdit()) return openAccessModal();
+            state.players = [...defaultMockNames];
+            syncPlayerNamesToBracket();
+            saveToCloud();
+            renderAll();
+        }
+
+        function randomizeSeeding() {
+            if (!canEdit()) return openAccessModal();
+            for (let i = state.players.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [state.players[i], state.players[j]] = [state.players[j], state.players[i]];
+            }
+            syncPlayerNamesToBracket();
+            saveToCloud();
+            renderAll();
+        }
+
+        function quickSimulateMatch(match) {
+            if (!match.p1 || !match.p2) return;
+            const s1 = Math.floor(Math.random() * 4);
+            const s2 = Math.floor(Math.random() * 4);
+            match.score1 = s1;
+            match.score2 = s2;
+
+            if (s1 > s2) match.winner = match.p1;
+            else if (s2 > s1) match.winner = match.p2;
+            else match.winner = Math.random() > 0.5 ? match.p1 : match.p2;
+        }
+
+        function quickSimulateCurrentGroup() {
+            if (!canEdit()) return openAccessModal();
+            const group = state.groups[state.activeGroup];
+            group.qf.forEach(m => quickSimulateMatch(m));
+            syncPlayerNamesToBracket();
+
+            group.sf.forEach(m => quickSimulateMatch(m));
+            syncPlayerNamesToBracket();
+
+            quickSimulateMatch(group.final);
+            syncPlayerNamesToBracket();
+
+            saveToCloud();
+            renderAll();
+        }
+
+        function quickSimulatePlayoffs() {
+            if (!canEdit()) return openAccessModal();
+            ['A', 'B', 'C', 'D'].forEach(gKey => {
+                const group = state.groups[gKey];
+                group.qf.forEach(m => { if (!m.winner) quickSimulateMatch(m); });
+                syncPlayerNamesToBracket();
+                group.sf.forEach(m => { if (!m.winner) quickSimulateMatch(m); });
+                syncPlayerNamesToBracket();
+                if (!group.final.winner) quickSimulateMatch(group.final);
+                syncPlayerNamesToBracket();
+            });
+
+            state.playoff.sf.forEach(m => quickSimulateMatch(m));
+            syncPlayerNamesToBracket();
+
+            quickSimulateMatch(state.playoff.thirdPlace);
+            quickSimulateMatch(state.playoff.grandFinal);
+            syncPlayerNamesToBracket();
+
+            saveToCloud();
+            renderAll();
+        }
+
+    </script>
+</body>
+</html>
