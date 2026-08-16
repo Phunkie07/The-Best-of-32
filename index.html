@@ -562,10 +562,14 @@
                 if (snapshot.exists()) {
                     const data = snapshot.data();
                     state = { ...state, ...data };
+                    if (state.creatorUid === currentUserId) {
+                        localStorage.setItem('tourney_is_editor', 'true');
+                    }
                 } else {
                     // Document doesn't exist yet, initial creation by current user as Creator
                     state.creatorUid = currentUserId;
                     state.allowedUids = [currentUserId];
+                    localStorage.setItem('tourney_is_editor', 'true');
                     saveToCloud();
                 }
                 syncPlayerNamesToBracket();
@@ -590,12 +594,16 @@
 
         function canEdit() {
             if (!currentUserId) return false;
+
+            // A dedicated local flag set once, the moment the passcode is
+            // correctly entered. This avoids re-checking against Firestore
+            // data every render, which can briefly disable buttons if the
+            // real-time sync hasn't caught up yet.
+            if (localStorage.getItem('tourney_is_editor') === 'true') return true;
+
             if (!state.creatorUid) return true; 
             if (state.creatorUid === currentUserId) return true;
             if (state.allowedUids && state.allowedUids.includes(currentUserId)) return true;
-            
-            const savedPass = localStorage.getItem('tourney_editor_passcode');
-            if (savedPass && savedPass === state.adminPasscode) return true;
 
             return false;
         }
@@ -1070,6 +1078,7 @@
 
             if (val === state.adminPasscode) {
                 localStorage.setItem('tourney_editor_passcode', val);
+                localStorage.setItem('tourney_is_editor', 'true');
                 if (!state.allowedUids.includes(currentUserId)) {
                     state.allowedUids.push(currentUserId);
                     saveToCloud();
