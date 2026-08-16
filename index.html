@@ -428,7 +428,7 @@
                 <i class="fa-solid fa-triangle-exclamation text-xl"></i>
             </div>
             <h3 class="text-lg font-bold text-white mb-2">Reset Tournament Scores?</h3>
-            <p class="text-xs text-slate-400 mb-6">This will clear all match scores, advancement progress, and registered player names. This action is only available to the tournament Creator.</p>
+            <p class="text-xs text-slate-400 mb-6">This will clear all match scores and advancement progress. Player names will be preserved.</p>
             <div class="flex items-center justify-center gap-3">
                 <button onclick="closeResetModal()" class="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white transition">Cancel</button>
                 <button onclick="confirmResetTournament()" class="px-4 py-2 text-xs font-semibold bg-red-500 hover:bg-red-600 text-white rounded-lg transition shadow-lg shadow-red-500/20">Reset Progression</button>
@@ -1098,7 +1098,7 @@
         }
 
         function openResetModal() {
-            if (!isCreator()) return openAccessModal();
+            if (!canEdit()) return openAccessModal();
             document.getElementById('reset-modal').classList.remove('hidden');
         }
 
@@ -1107,7 +1107,7 @@
         }
 
         function confirmResetTournament() {
-            if (!isCreator()) return;
+            if (!canEdit()) return;
             state.players = [...defaultPlayers];
             ['A', 'B', 'C', 'D'].forEach(gKey => {
                 state.groups[gKey] = createGroupStructure(gKey);
