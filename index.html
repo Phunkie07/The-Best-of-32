@@ -633,16 +633,9 @@
                 }
             }
 
-            // Disable or Enable Action Buttons based on permissions
-            const actionBtns = ['btn-autofill', 'btn-shuffle', 'btn-sim-playoffs', 'btn-sim-group', 'btn-load-names'];
-            actionBtns.forEach(id => {
-                const btn = document.getElementById(id);
-                if (btn) btn.disabled = !hasEditPermission;
-            });
-
-            // Reset is Creator-only, not available to permitted editors
-            const resetBtn = document.getElementById('btn-reset');
-            if (resetBtn) resetBtn.disabled = !isCreator();
+            // Action buttons are never disabled via JS — each button's own
+            // click handler checks canEdit() and prompts for the passcode
+            // if needed, avoiding any stuck "disabled" state.
         }
 
         function switchTab(tabId) {
