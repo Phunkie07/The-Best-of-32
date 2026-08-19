@@ -304,8 +304,14 @@
                         </h2>
                         <p class="text-xs text-slate-400 mt-1">Edit participant names below or auto-generate mock players. Names sync automatically across all brackets.</p>
                     </div>
-                    <div class="flex items-center space-x-2">
-                        <button id="btn-load-names" onclick="autoFillMockData()" class="text-xs px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-medium border border-emerald-500/30 transition flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button id="btn-save-all-names" onclick="saveAllNames()" class="text-xs px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-semibold border border-emerald-400/30 transition flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed">
+                            <i class="fa-solid fa-cloud-arrow-up"></i> Save All Names
+                        </button>
+                        <button id="btn-clear-all-names" onclick="openClearNamesModal()" class="text-xs px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 font-medium border border-red-500/30 transition flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed">
+                            <i class="fa-solid fa-eraser"></i> Clear All Names
+                        </button>
+                        <button id="btn-load-names" onclick="autoFillMockData()" class="text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium border border-slate-700 transition flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed">
                             <i class="fa-solid fa-user-plus"></i> Load Default Names
                         </button>
                     </div>
@@ -318,7 +324,39 @@
             </div>
         </div>
 
-        <!-- TAB CONTENT: RULES & REGULATIONS -->
+        <!-- CLEAR ALL NAMES CONFIRMATION MODAL -->
+    <div id="clear-names-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+        <div class="w-full max-w-md bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden">
+            <div class="p-6">
+                <div class="flex items-start gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-red-500/10 text-red-400 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-eraser"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-white">Clear All Player Names?</h3>
+                        <p class="text-sm text-slate-400 mt-1 leading-relaxed">This will remove all 32 roster names and replace them with blank player slots. You can enter a new roster and save it for the next round.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="border-t border-slate-800 p-4 flex justify-end gap-2">
+                <button onclick="closeClearNamesModal()" class="px-4 py-2 text-sm font-semibold text-slate-300 bg-slate-800 hover:bg-slate-700 rounded-lg transition">Cancel</button>
+                <button onclick="confirmClearAllNames()" class="px-4 py-2 text-sm font-semibold text-white bg-red-500 hover:bg-red-600 rounded-lg transition">Clear All Names</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ROSTER SAVE STATUS -->
+    <div id="roster-save-status" class="fixed bottom-5 right-5 z-50 hidden max-w-sm">
+        <div id="roster-save-status-inner" class="flex items-center gap-3 px-4 py-3 rounded-xl border shadow-2xl bg-slate-900 border-slate-700">
+            <i id="roster-save-status-icon" class="fa-solid fa-circle-check text-emerald-400"></i>
+            <div>
+                <p id="roster-save-status-title" class="text-sm font-bold text-white">Names Saved</p>
+                <p id="roster-save-status-message" class="text-xs text-slate-400 mt-0.5">The roster is synced to the tournament.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB CONTENT: RULES & REGULATIONS -->
         <div id="content-rules" class="tab-content hidden flex-1 flex-col gap-6">
             <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-xl max-w-3xl mx-auto w-full">
                 <div class="text-center border-b border-slate-800 pb-5 mb-6">
@@ -656,6 +694,10 @@
         window.quickSimulateCurrentGroup = quickSimulateCurrentGroup;
         window.quickSimulatePlayoffs = quickSimulatePlayoffs;
         window.updatePlayerName = updatePlayerName;
+        window.saveAllNames = saveAllNames;
+        window.openClearNamesModal = openClearNamesModal;
+        window.closeClearNamesModal = closeClearNamesModal;
+        window.confirmClearAllNames = confirmClearAllNames;
         window.openAccessModal = openAccessModal;
         window.closeAccessModal = closeAccessModal;
         window.submitAccessPasscode = submitAccessPasscode;
@@ -770,15 +812,17 @@
         }
 
         async function saveToCloud() {
-            if (!currentUser) return;
+            if (!currentUser) return false;
             if (!canEdit()) {
                 openAccessModal();
-                return;
+                return false;
             }
             try {
                 await setDoc(tourneyDocRef, state, { merge: true });
+                return true;
             } catch (e) {
                 console.error("Failed to save state to Firestore", e);
+                return false;
             }
         }
 
@@ -1144,6 +1188,110 @@
 
         function escapeHtml(str) {
             return (str || '').replace(/"/g, '&quot;');
+        }
+
+        let rosterSaveStatusTimer = null;
+
+        function showRosterSaveStatus(success, title, message) {
+            const status = document.getElementById('roster-save-status');
+            const inner = document.getElementById('roster-save-status-inner');
+            const icon = document.getElementById('roster-save-status-icon');
+            const titleEl = document.getElementById('roster-save-status-title');
+            const messageEl = document.getElementById('roster-save-status-message');
+            if (!status || !inner || !icon || !titleEl || !messageEl) return;
+
+            clearTimeout(rosterSaveStatusTimer);
+            status.classList.remove('hidden');
+            titleEl.innerText = title;
+            messageEl.innerText = message;
+
+            if (success) {
+                inner.className = 'flex items-center gap-3 px-4 py-3 rounded-xl border shadow-2xl bg-slate-900 border-emerald-500/30';
+                icon.className = 'fa-solid fa-circle-check text-emerald-400';
+            } else {
+                inner.className = 'flex items-center gap-3 px-4 py-3 rounded-xl border shadow-2xl bg-slate-900 border-red-500/30';
+                icon.className = 'fa-solid fa-circle-exclamation text-red-400';
+            }
+
+            rosterSaveStatusTimer = setTimeout(() => status.classList.add('hidden'), 4500);
+        }
+
+        async function saveAllNames() {
+            if (!canEdit()) return openAccessModal();
+            const button = document.getElementById('btn-save-all-names');
+            if (button) {
+                button.disabled = true;
+                button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+            }
+
+            try {
+                // Rebuild bracket names from the current 32-player roster, then
+                // explicitly wait for Firestore to confirm the write.
+                syncPlayerNamesToBracket();
+                const saved = await saveToCloud();
+                if (!saved) throw new Error('Cloud save was not confirmed.');
+                showRosterSaveStatus(true, 'Names Saved Successfully', 'All 32 player names have been synced to the tournament. They will remain available after you close or leave the site.');
+            } catch (e) {
+                console.error('Failed to save roster names', e);
+                showRosterSaveStatus(false, 'Save Failed', 'The roster could not be synced. Check your connection and try again.');
+            } finally {
+                if (button) {
+                    button.disabled = false;
+                    button.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> Save All Names';
+                }
+                renderAll();
+            }
+        }
+
+        function openClearNamesModal() {
+            if (!canEdit()) return openAccessModal();
+            const modal = document.getElementById('clear-names-modal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
+        }
+
+        function closeClearNamesModal() {
+            const modal = document.getElementById('clear-names-modal');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+        }
+
+        async function confirmClearAllNames() {
+            if (!canEdit()) return openAccessModal();
+
+            // Clear the roster and reset all bracket state so no previous
+            // round's names/results remain attached to the new roster.
+            state.players = Array(32).fill('');
+            ['A', 'B', 'C', 'D'].forEach(gKey => {
+                state.groups[gKey] = createGroupStructure(gKey);
+            });
+            state.playoff = {
+                sf: [
+                    { id: 'psf1', p1Group: 'A', p2Group: 'B', p1: '', p2: '', score1: null, score2: null, winner: null },
+                    { id: 'psf2', p1Group: 'C', p2Group: 'D', p1: '', p2: '', score1: null, score2: null, winner: null }
+                ],
+                thirdPlace: { id: 'p3rd', p1: '', p2: '', score1: null, score2: null, winner: null },
+                grandFinal: { id: 'pfinal', p1: '', p2: '', score1: null, score2: null, winner: null },
+                grandChampion: ''
+            };
+
+            syncPlayerNamesToBracket();
+            closeClearNamesModal();
+
+            try {
+                const saved = await saveToCloud();
+                if (!saved) throw new Error('Cloud save was not confirmed.');
+                showRosterSaveStatus(true, 'Roster Cleared & Saved', 'All 32 names were cleared and the fresh roster is now synced.');
+            } catch (e) {
+                console.error('Failed to save cleared roster', e);
+                showRosterSaveStatus(false, 'Clear Saved Failed', 'The roster was cleared locally, but the cloud sync failed. Please try again.');
+            }
+
+            renderAll();
         }
 
         function updatePlayerName(index, newName) {
