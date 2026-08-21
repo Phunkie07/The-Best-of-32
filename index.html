@@ -302,7 +302,7 @@
                         <h2 class="text-xl font-bold text-white flex items-center gap-2">
                             <i class="fa-solid fa-users-gear text-emerald-400"></i> Player Roster & Seeding (32 Participants)
                         </h2>
-                        <p class="text-xs text-slate-400 mt-1">Edit participant names below, then click "Save All Names" to confirm they're synced for everyone.</p>
+                        <p class="text-xs text-slate-400 mt-1">Type or select a name — previously used names are remembered and searchable. Click "Save All Names" to sync for everyone.</p>
                     </div>
                     <div class="flex items-center space-x-2 flex-wrap gap-y-2">
                         <button id="btn-save-names" onclick="saveAllRosterNames()" class="text-xs px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-medium border border-emerald-500/30 transition flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed">
@@ -318,6 +318,7 @@
                 </div>
 
                 <p id="roster-save-status" class="text-xs font-semibold mb-4 hidden"></p>
+                <datalist id="known-players-list"></datalist>
 
                 <!-- 4 Groups Editor Cards -->
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" id="roster-groups-grid">
@@ -419,6 +420,18 @@
                    title="Follow on X"
                    class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-500 flex items-center justify-center text-slate-400 hover:text-white transition">
                     <i class="fa-brands fa-x-twitter"></i>
+                </a>
+                <a href="https://github.com/Phunkie07"
+                   target="_blank" rel="noopener noreferrer"
+                   title="View on GitHub"
+                   class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-500 flex items-center justify-center text-slate-400 hover:text-white transition">
+                    <i class="fa-brands fa-github"></i>
+                </a>
+                <a href="https://discord.com/users/phunkie_d"
+                   target="_blank" rel="noopener noreferrer"
+                   title="Connect on Discord"
+                   class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-indigo-500/20 border border-slate-700 hover:border-indigo-500/40 flex items-center justify-center text-slate-400 hover:text-indigo-400 transition">
+                    <i class="fa-brands fa-discord"></i>
                 </a>
                 <a href="mailto:davidokorooluchukwu@gmail.com"
                    title="Send an email"
@@ -706,6 +719,7 @@
 
         let state = {
             players: [...defaultPlayers],
+            knownPlayers: [],
             activeTab: 'playoff',
             activeGroup: 'A',
             creatorUid: null,
@@ -1114,6 +1128,8 @@
             const container = document.getElementById('roster-groups-grid');
             if (!container) return;
 
+            renderKnownPlayersDatalist();
+
             const groupKeys = ['A', 'B', 'C', 'D'];
             const hasEditPermission = canEdit();
 
@@ -1139,10 +1155,11 @@
                                             type="text" 
                                             value="${escapeHtml(player)}" 
                                             data-player-index="${globalIdx}"
+                                            list="known-players-list"
                                             ${!hasEditPermission ? 'disabled' : ''}
                                             onchange="updatePlayerName(${globalIdx}, this.value)"
                                             class="roster-name-input w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:opacity-60 disabled:cursor-not-allowed"
-                                            placeholder="Player Name"
+                                            placeholder="Type or select a name"
                                         >
                                     </div>
                                 `;
@@ -1159,10 +1176,30 @@
 
         function updatePlayerName(index, newName) {
             if (!canEdit()) return openAccessModal();
-            state.players[index] = newName.trim() || `Player ${index + 1}`;
+            const cleanName = newName.trim() || `Player ${index + 1}`;
+            state.players[index] = cleanName;
+            rememberPlayerName(cleanName);
             syncPlayerNamesToBracket();
             saveToCloud();
             renderAll();
+        }
+
+        // Adds a name to the permanent, reusable name pool if it's new
+        // (skipping default placeholder names like "Player 5").
+        function rememberPlayerName(name) {
+            if (!name || /^Player \d+$/.test(name)) return;
+            if (!state.knownPlayers) state.knownPlayers = [];
+            if (!state.knownPlayers.includes(name)) {
+                state.knownPlayers.push(name);
+                state.knownPlayers.sort((a, b) => a.localeCompare(b));
+            }
+        }
+
+        function renderKnownPlayersDatalist() {
+            const datalist = document.getElementById('known-players-list');
+            if (!datalist) return;
+            const names = state.knownPlayers || [];
+            datalist.innerHTML = names.map(n => `<option value="${escapeHtml(n)}"></option>`).join('');
         }
 
         function showRosterStatus(message, isError = false) {
@@ -1185,7 +1222,9 @@
             document.querySelectorAll('.roster-name-input').forEach(input => {
                 const idx = parseInt(input.dataset.playerIndex);
                 if (!isNaN(idx)) {
-                    state.players[idx] = input.value.trim() || `Player ${idx + 1}`;
+                    const cleanName = input.value.trim() || `Player ${idx + 1}`;
+                    state.players[idx] = cleanName;
+                    rememberPlayerName(cleanName);
                 }
             });
 
